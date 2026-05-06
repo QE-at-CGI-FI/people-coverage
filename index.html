@@ -1054,8 +1054,18 @@ function niceTicks(max, n=4) {
   return ticks;
 }
 
-function barChartSVG(data, color) {
-  const max = Math.max(...data.map(d=>d.value), 1);
+const TYPE_COLORS = { consulting: '#6366f1', client: '#0ea5e9', partner: '#10b981' };
+const TYPE_LABELS = { consulting: 'Colleagues', client: 'Client', partner: 'Partner' };
+
+function personOrgType(personId) {
+  const person = state.people.find(p => p.id === personId);
+  return orgById(person?.orgId)?.type || null;
+}
+
+function stackedBarChartSVG(data, activeTypes) {
+  // data: array of { label, consulting, client, partner }
+  const totals = data.map(d => activeTypes.reduce((s,t) => s+(d[t]||0), 0));
+  const max = Math.max(...totals, 1);
   const n = data.length;
   const vW = Math.max(n*28, 400), vH = 160;
   const pL=28, pR=8, pT=8, pB=26;
@@ -1065,41 +1075,69 @@ function barChartSVG(data, color) {
 
   const gridLines = ticks.map(v => {
     const y = (pT + cH - (v/max)*cH).toFixed(1);
-    return `<line x1="${pL}" y1="${y}" x2="${vW-pR}" y2="${y}" stroke="#f3f4f6" stroke-width="1"/>
-            <text x="${pL-3}" y="${(+y+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#9ca3af">${v}</text>`;
+    return '<line x1="'+pL+'" y1="'+y+'" x2="'+(vW-pR)+'" y2="'+y+'" stroke="#f3f4f6" stroke-width="1"/>'
+         + '<text x="'+(pL-3)+'" y="'+(+y+3).toFixed(1)+'" text-anchor="end" font-size="7" fill="#9ca3af">'+v+'</text>';
   }).join('');
 
   const showEvery = n<=13 ? 1 : Math.ceil(n/10);
   const bars = data.map((d,i) => {
-    const bH = Math.max((d.value/max)*cH, d.value>0?1:0);
-    const x = (pL + i*bW + gap/2).toFixed(1);
-    const y = (pT + cH - bH).toFixed(1);
-    const w = (bW - gap).toFixed(1);
-    const lx = (pL + (i+0.5)*bW).toFixed(1);
+    const x = pL + i*bW + gap/2;
+    const w = bW - gap;
+    const lx = pL + (i+0.5)*bW;
     const showLabel = i%showEvery===0 || i===n-1;
-    return `<rect x="${x}" y="${y}" width="${w}" height="${bH.toFixed(1)}" fill="${color}" rx="2" opacity=".85">
-              <title>${d.label}: ${d.value}</title></rect>
-            ${showLabel?`<text x="${lx}" y="${vH-3}" text-anchor="middle" font-size="7" fill="#9ca3af">${d.label}</text>`:''}`;
+    let yBot = pT + cH;
+    const segs = activeTypes.map(type => {
+      const val = d[type] || 0;
+      if (!val) return '';
+      const bH = (val/max)*cH;
+      yBot -= bH;
+      return '<rect x="'+x.toFixed(1)+'" y="'+yBot.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+bH.toFixed(1)+'"'
+           + ' fill="'+TYPE_COLORS[type]+'" opacity=".85">'
+           + '<title>'+TYPE_LABELS[type]+': '+val+'</title></rect>';
+    }).join('');
+    const label = showLabel ? '<text x="'+lx.toFixed(1)+'" y="'+(vH-3)+'" text-anchor="middle" font-size="7" fill="#9ca3af">'+d.label+'</text>' : '';
+    return segs + label;
   }).join('');
 
-  return `<svg viewBox="0 0 ${vW} ${vH}" style="width:100%;height:160px;display:block;overflow:visible">
-    ${gridLines}${bars}
-    <line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+cH}" stroke="#e5e7eb" stroke-width="1"/>
-    <line x1="${pL}" y1="${pT+cH}" x2="${vW-pR}" y2="${pT+cH}" stroke="#e5e7eb" stroke-width="1"/>
-  </svg>`;
+  return '<svg viewBox="0 0 '+vW+' '+vH+'" style="width:100%;height:160px;display:block;overflow:visible">'
+       + gridLines + bars
+       + '<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(pT+cH)+'" stroke="#e5e7eb" stroke-width="1"/>'
+       + '<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(vW-pR)+'" y2="'+(pT+cH)+'" stroke="#e5e7eb" stroke-width="1"/>'
+       + '</svg>';
 }
 
 function renderStatsTab() {
   const buckets = getTimeBuckets();
   const bucketConvs = buckets.map(b => convsInBucket(b));
-  const convBuckets = buckets.map((b,i) => ({label:b.label, value:bucketConvs[i].length}));
-  const peopleBuckets = buckets.map((b,i) => ({label:b.label, value:new Set(bucketConvs[i].map(c=>c.personId)).size}));
-
   const allConvsInRange = bucketConvs.flat();
   const totalConvs = allConvsInRange.length;
   const uniquePeople = new Set(allConvsInRange.map(c=>c.personId)).size;
   const oneOnOne = allConvsInRange.filter(c=>c.type==='1:1'||!c.type).length;
   const group = allConvsInRange.filter(c=>c.type==='group').length;
+
+  // Which org types actually exist
+  const activeTypes = ['consulting','client','partner'].filter(t =>
+    state.organizations.some(o => o.type === t)
+  );
+
+  // Stacked data per bucket
+  const convStacked = buckets.map((b,i) => {
+    const row = {label: b.label, consulting:0, client:0, partner:0};
+    bucketConvs[i].forEach(c => { const t = personOrgType(c.personId); if (t) row[t]++; });
+    return row;
+  });
+  const peopleStacked = buckets.map((b,i) => {
+    const seen = {consulting: new Set(), client: new Set(), partner: new Set()};
+    bucketConvs[i].forEach(c => { const t = personOrgType(c.personId); if (t) seen[t].add(c.personId); });
+    return {label: b.label, consulting: seen.consulting.size, client: seen.client.size, partner: seen.partner.size};
+  });
+
+  // Summary per org type
+  const typeTotals = {};
+  activeTypes.forEach(t => {
+    typeTotals[t] = {convs: convStacked.reduce((s,b)=>s+(b[t]||0),0), people: new Set()};
+  });
+  allConvsInRange.forEach(c => { const t = personOrgType(c.personId); if (t && typeTotals[t]) typeTotals[t].people.add(c.personId); });
 
   const themeCounts = {};
   allConvsInRange.forEach(c => (c.themes||[]).forEach(t => { themeCounts[t]=(themeCounts[t]||0)+1; }));
@@ -1107,67 +1145,69 @@ function renderStatsTab() {
   const maxTheme = topThemes[0]?.[1] || 1;
 
   const rangeLabel = {daily:'last 30 days', weekly:'last 3 months', monthly:'last year'}[ui.statsRange];
+  const emptyMsg = '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">No conversations logged in this period</div>';
 
-  document.getElementById('main-stats').innerHTML = `
-    <div style="width:100%;max-width:960px;display:flex;flex-direction:column;gap:20px">
+  const legend = activeTypes.map(t =>
+    '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--gray-500)">'
+    + '<span style="width:10px;height:10px;border-radius:2px;background:'+TYPE_COLORS[t]+';display:inline-block"></span>'
+    + TYPE_LABELS[t]+'</span>'
+  ).join('');
 
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div class="range-btns">
-          <button class="range-btn ${ui.statsRange==='daily'?'active':''}" data-range="daily">Daily · 30 days</button>
-          <button class="range-btn ${ui.statsRange==='weekly'?'active':''}" data-range="weekly">Weekly · 3 months</button>
-          <button class="range-btn ${ui.statsRange==='monthly'?'active':''}" data-range="monthly">Monthly · 1 year</button>
-        </div>
-      </div>
+  // Summary cards: total + per-type breakdown
+  const summaryCards =
+    '<div class="chart-card" style="padding:16px">'
+    + '<div style="font-size:28px;font-weight:800;color:var(--gray-700)">'+totalConvs+'</div>'
+    + '<div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Total conversations</div>'
+    + '</div>'
+    + '<div class="chart-card" style="padding:16px">'
+    + '<div style="font-size:28px;font-weight:800;color:var(--gray-700)">'+uniquePeople+'</div>'
+    + '<div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Unique people</div>'
+    + '</div>'
+    + activeTypes.map(t =>
+        '<div class="chart-card" style="padding:16px;border-top:3px solid '+TYPE_COLORS[t]+'">'
+        + '<div style="font-size:13px;font-weight:700;color:'+TYPE_COLORS[t]+';margin-bottom:8px">'+TYPE_LABELS[t]+'</div>'
+        + '<div style="display:flex;gap:16px">'
+        + '<div><div style="font-size:22px;font-weight:800;color:var(--gray-900)">'+typeTotals[t].convs+'</div><div style="font-size:10px;color:var(--gray-400)">conversations</div></div>'
+        + '<div><div style="font-size:22px;font-weight:800;color:var(--gray-900)">'+typeTotals[t].people.size+'</div><div style="font-size:10px;color:var(--gray-400)">people</div></div>'
+        + '</div></div>'
+      ).join('');
 
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-        <div class="chart-card" style="padding:16px">
-          <div style="font-size:28px;font-weight:800;color:var(--indigo)">${totalConvs}</div>
-          <div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Conversations</div>
-        </div>
-        <div class="chart-card" style="padding:16px">
-          <div style="font-size:28px;font-weight:800;color:#10b981">${uniquePeople}</div>
-          <div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Unique people</div>
-        </div>
-        <div class="chart-card" style="padding:16px">
-          <div style="font-size:28px;font-weight:800;color:#8b5cf6">${oneOnOne}</div>
-          <div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">1:1 conversations</div>
-        </div>
-        <div class="chart-card" style="padding:16px">
-          <div style="font-size:28px;font-weight:800;color:#f59e0b">${group}</div>
-          <div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Group conversations</div>
-        </div>
-      </div>
+  const colCount = 2 + activeTypes.length;
 
-      <div class="chart-card">
-        <div class="chart-title">Conversations · ${rangeLabel}</div>
-        ${totalConvs===0
-          ? `<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">No conversations logged in this period</div>`
-          : barChartSVG(convBuckets, '#6366f1')}
-      </div>
+  let html = '<div style="width:100%;max-width:960px;display:flex;flex-direction:column;gap:20px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
+    + '<div class="range-btns">'
+    + '<button class="range-btn '+(ui.statsRange==='daily'?'active':'')+'" data-range="daily">Daily · 30 days</button>'
+    + '<button class="range-btn '+(ui.statsRange==='weekly'?'active':'')+'" data-range="weekly">Weekly · 3 months</button>'
+    + '<button class="range-btn '+(ui.statsRange==='monthly'?'active':'')+'" data-range="monthly">Monthly · 1 year</button>'
+    + '</div></div>'
+    + '<div style="display:grid;grid-template-columns:repeat('+colCount+',1fr);gap:12px">'+summaryCards+'</div>'
+    + '<div class="chart-card">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<div class="chart-title" style="margin-bottom:0">Conversations · '+rangeLabel+'</div>'
+    + '<div style="display:flex;gap:12px">'+legend+'</div></div>'
+    + (totalConvs===0 ? emptyMsg : stackedBarChartSVG(convStacked, activeTypes))
+    + '</div>'
+    + '<div class="chart-card">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<div class="chart-title" style="margin-bottom:0">Unique people contacted · '+rangeLabel+'</div>'
+    + '<div style="display:flex;gap:12px">'+legend+'</div></div>'
+    + (totalConvs===0 ? emptyMsg : stackedBarChartSVG(peopleStacked, activeTypes))
+    + '</div>';
 
-      <div class="chart-card">
-        <div class="chart-title">Unique people contacted · ${rangeLabel}</div>
-        ${totalConvs===0
-          ? `<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">No conversations logged in this period</div>`
-          : barChartSVG(peopleBuckets, '#10b981')}
-      </div>
+  if (topThemes.length) {
+    html += '<div class="chart-card"><div class="chart-title">Top themes · '+rangeLabel+'</div>'
+      + topThemes.map(([t,count]) =>
+          '<div class="theme-bar-row">'
+          + '<span class="theme-bar-label" title="'+esc(t)+'">'+esc(t)+'</span>'
+          + '<div class="theme-bar-track"><div class="theme-bar-fill" style="width:'+(count/maxTheme*100).toFixed(1)+'%"></div></div>'
+          + '<span class="theme-bar-count">'+count+'</span></div>'
+        ).join('')
+      + '</div>';
+  }
 
-      ${topThemes.length ? `
-      <div class="chart-card">
-        <div class="chart-title">Top themes · ${rangeLabel}</div>
-        ${topThemes.map(([t,count])=>`
-          <div class="theme-bar-row">
-            <span class="theme-bar-label" title="${esc(t)}">${esc(t)}</span>
-            <div class="theme-bar-track">
-              <div class="theme-bar-fill" style="width:${(count/maxTheme*100).toFixed(1)}%"></div>
-            </div>
-            <span class="theme-bar-count">${count}</span>
-          </div>
-        `).join('')}
-      </div>` : ''}
-
-    </div>
-  `;
+  html += '</div>';
+  document.getElementById('main-stats').innerHTML = html;
 
   document.querySelectorAll('[data-range]').forEach(btn => {
     btn.addEventListener('click', () => { ui.statsRange = btn.dataset.range; renderStatsTab(); });
