@@ -645,9 +645,11 @@ function cardHTML(p) {
     </div>
 
     <div class="badges">
-      <span class="badge" style="background:${(org?.color||'#9ca3af')}22;color:${org?.color||'#9ca3af'};border:1px solid ${(org?.color||'#9ca3af')}44">
-        <span class="badge-dot" style="background:${org?.color||'#9ca3af'}"></span>${esc(orgDisplayName(org))}
-      </span>
+      ${org ? `<span class="badge" style="background:${org.color}22;color:${org.color};border:1px solid ${org.color}44">
+        <span class="badge-dot" style="background:${org.color}"></span>${esc(orgDisplayName(org))}
+      </span>` : `<span class="badge" style="background:#fef3c722;color:#d97706;border:1px solid #fcd34d66">
+        <span class="badge-dot" style="background:#f59e0b"></span>Community peer
+      </span>`}
       ${isConsultant && clientOrg ? `
         <span class="badge" style="background:${clientOrg.color}18;color:${clientOrg.color};border:1px solid ${clientOrg.color}44">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -814,9 +816,9 @@ function showPersonModal(person) {
             <input id="m-role" value="${esc(current.role||'')}" placeholder="e.g. CTO, Project Lead" />
           </div>
           <div class="field">
-            <label>Organization *</label>
+            <label>Organization <span style="font-weight:400;color:var(--gray-400)">(optional)</span></label>
             <select id="m-org">
-              <option value="">— select —</option>
+              <option value="">— none / community peer —</option>
               ${state.organizations.map(o=>`<option value="${o.id}" ${current.orgId===o.id?'selected':''}>${esc(o.name)} (${o.type})</option>`).join('')}
             </select>
           </div>
@@ -888,7 +890,6 @@ function showPersonModal(person) {
     const name = document.getElementById('m-name').value.trim();
     const orgId = document.getElementById('m-org').value;
     if (!name) { alert('Name required'); return; }
-    if (!orgId) { alert('Organization required'); return; }
     const clientOrgId = document.getElementById('m-client-org')?.value || null;
     const role = document.getElementById('m-role').value.trim();
     if (isNew) {
@@ -1054,12 +1055,13 @@ function niceTicks(max, n=4) {
   return ticks;
 }
 
-const TYPE_COLORS = { consulting: '#6366f1', client: '#0ea5e9', partner: '#10b981' };
-const TYPE_LABELS = { consulting: 'Colleagues', client: 'Client', partner: 'Partner' };
+const TYPE_COLORS = { consulting: '#6366f1', client: '#0ea5e9', partner: '#10b981', community: '#f59e0b' };
+const TYPE_LABELS = { consulting: 'Colleagues', client: 'Client', partner: 'Partner', community: 'Community peers' };
 
 function personOrgType(personId) {
   const person = state.people.find(p => p.id === personId);
-  return orgById(person?.orgId)?.type || null;
+  if (!person?.orgId) return 'community';
+  return orgById(person.orgId)?.type || 'community';
 }
 
 function stackedBarChartSVG(data, activeTypes) {
@@ -1119,25 +1121,26 @@ function renderStatsTab() {
   const activeTypes = ['consulting','client','partner'].filter(t =>
     state.organizations.some(o => o.type === t)
   );
+  if (state.people.some(p => !p.orgId)) activeTypes.push('community');
 
   // Stacked data per bucket
   const convStacked = buckets.map((b,i) => {
-    const row = {label: b.label, consulting:0, client:0, partner:0};
+    const row = {label: b.label, consulting:0, client:0, partner:0, community:0};
     bucketConvs[i].forEach(c => { const t = personOrgType(c.personId); if (t) row[t]++; });
     return row;
   });
   const peopleStacked = buckets.map((b,i) => {
-    const seen = {consulting: new Set(), client: new Set(), partner: new Set()};
+    const seen = {consulting: new Set(), client: new Set(), partner: new Set(), community: new Set()};
     bucketConvs[i].forEach(c => { const t = personOrgType(c.personId); if (t) seen[t].add(c.personId); });
-    return {label: b.label, consulting: seen.consulting.size, client: seen.client.size, partner: seen.partner.size};
+    return {label: b.label, consulting: seen.consulting.size, client: seen.client.size, partner: seen.partner.size, community: seen.community.size};
   });
 
   // Summary per org type
   const typeTotals = {};
-  activeTypes.forEach(t => {
+  ['consulting','client','partner','community'].forEach(t => {
     typeTotals[t] = {convs: convStacked.reduce((s,b)=>s+(b[t]||0),0), people: new Set()};
   });
-  allConvsInRange.forEach(c => { const t = personOrgType(c.personId); if (t && typeTotals[t]) typeTotals[t].people.add(c.personId); });
+  allConvsInRange.forEach(c => { const t = personOrgType(c.personId); if (t) typeTotals[t].people.add(c.personId); });
 
   const themeCounts = {};
   allConvsInRange.forEach(c => (c.themes||[]).forEach(t => { themeCounts[t]=(themeCounts[t]||0)+1; }));
