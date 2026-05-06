@@ -72,12 +72,12 @@
   .conv-type-tag { border-radius: var(--radius-pill); padding: 1px 6px; font-size: 10px; font-weight: 600; }
   .conv-type-one { background: #ede9fe; color: #6d28d9; }
   .conv-type-group { background: #d1fae5; color: #065f46; }
-  .conv-type-opt { display: flex; align-items: center; gap: 6px; cursor: pointer;
+  .conv-type-opt { display: inline-flex; align-items: center; cursor: pointer;
                    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
                    padding: 7px 14px; font-size: 13px; font-weight: 500;
                    transition: border-color .1s, background .1s; }
   .conv-type-opt:has(input:checked) { border-color: var(--indigo); background: var(--indigo-light); color: var(--indigo-dark); }
-  .conv-type-opt input { accent-color: var(--indigo); }
+  .conv-type-opt input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
 
   /* Coverage dot */
   .coverage-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-700); }
@@ -357,10 +357,18 @@ function fmtDate(ds) {
 const PSEUDO_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 function orgDisplayName(org) {
   if (!org) return '—';
-  if (!ui.pseudonymize || org.type !== 'client') return org.name;
-  const clientOrgs = state.organizations.filter(o => o.type === 'client');
-  const idx = clientOrgs.findIndex(o => o.id === org.id);
-  return `Client ${PSEUDO_LABELS[idx] ?? idx + 1}`;
+  if (!ui.pseudonymize || org.type === 'consulting') return org.name;
+  if (org.type === 'client') {
+    const clientOrgs = state.organizations.filter(o => o.type === 'client');
+    const idx = clientOrgs.findIndex(o => o.id === org.id);
+    return `Client ${PSEUDO_LABELS[idx] ?? idx + 1}`;
+  }
+  if (org.type === 'partner') {
+    const partnerOrgs = state.organizations.filter(o => o.type === 'partner');
+    const idx = partnerOrgs.findIndex(o => o.id === org.id);
+    return `Partner ${PSEUDO_LABELS[idx] ?? idx + 1}`;
+  }
+  return org.name;
 }
 
 // ─── UI state ────────────────────────────────────────────────────────────
@@ -695,6 +703,7 @@ function showOrgModal(org) {
             <select id="m-org-type">
               <option value="consulting" ${current.type==='consulting'?'selected':''}>Consulting (my org)</option>
               <option value="client" ${current.type==='client'?'selected':''}>Client organization</option>
+              <option value="partner" ${current.type==='partner'?'selected':''}>Partner organization</option>
             </select>
           </div>
           <div class="field">
@@ -774,15 +783,15 @@ function showPersonModal(person) {
             <label>Organization *</label>
             <select id="m-org">
               <option value="">— select —</option>
-              ${state.organizations.map(o=>`<option value="${o.id}" ${current.orgId===o.id?'selected':''}>${esc(o.name)} (${o.type==='consulting'?'consulting':'client'})</option>`).join('')}
+              ${state.organizations.map(o=>`<option value="${o.id}" ${current.orgId===o.id?'selected':''}>${esc(o.name)} (${o.type})</option>`).join('')}
             </select>
           </div>
           ${consulting ? `
           <div class="field" id="client-org-field" style="${current.orgId===consulting.id?'':'display:none'}">
-            <label>Assigned to client <span style="font-weight:400;color:var(--gray-400)">(for consultants)</span></label>
+            <label>Assigned to <span style="font-weight:400;color:var(--gray-400)">(client or partner)</span></label>
             <select id="m-client-org">
               <option value="">— none / internal —</option>
-              ${state.organizations.filter(o=>o.type==='client').map(o=>`<option value="${o.id}" ${current.clientOrgId===o.id?'selected':''}>${esc(o.name)}</option>`).join('')}
+              ${state.organizations.filter(o=>o.type==='client'||o.type==='partner').map(o=>`<option value="${o.id}" ${current.clientOrgId===o.id?'selected':''}>${esc(o.name)} (${o.type})</option>`).join('')}
             </select>
           </div>
           ` : ''}
