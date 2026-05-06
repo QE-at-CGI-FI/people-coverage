@@ -1138,9 +1138,15 @@ function renderStatsTab() {
   // Summary per org type
   const typeTotals = {};
   ['consulting','client','partner','community'].forEach(t => {
-    typeTotals[t] = {convs: convStacked.reduce((s,b)=>s+(b[t]||0),0), people: new Set()};
+    typeTotals[t] = {convs: convStacked.reduce((s,b)=>s+(b[t]||0),0), people: new Set(), oneOnOne: 0, group: 0};
   });
-  allConvsInRange.forEach(c => { const t = personOrgType(c.personId); if (t) typeTotals[t].people.add(c.personId); });
+  allConvsInRange.forEach(c => {
+    const t = personOrgType(c.personId);
+    if (t) {
+      typeTotals[t].people.add(c.personId);
+      if (c.type === 'group') typeTotals[t].group++; else typeTotals[t].oneOnOne++;
+    }
+  });
 
   const themeCounts = {};
   allConvsInRange.forEach(c => (c.themes||[]).forEach(t => { themeCounts[t]=(themeCounts[t]||0)+1; }));
@@ -1161,7 +1167,11 @@ function renderStatsTab() {
     '<div class="chart-card" style="padding:16px">'
     + '<div style="font-size:28px;font-weight:800;color:var(--gray-700)">'+totalConvs+'</div>'
     + '<div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Total conversations</div>'
-    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-top:8px">'
+    + '<span style="font-size:11px;color:#6d28d9;font-weight:600">'+oneOnOne+' 1:1</span>'
+    + '<span style="font-size:11px;color:var(--gray-400)">·</span>'
+    + '<span style="font-size:11px;color:#065f46;font-weight:600">'+group+' group</span>'
+    + '</div></div>'
     + '<div class="chart-card" style="padding:16px">'
     + '<div style="font-size:28px;font-weight:800;color:var(--gray-700)">'+uniquePeople+'</div>'
     + '<div style="font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px">Unique people</div>'
@@ -1169,9 +1179,14 @@ function renderStatsTab() {
     + activeTypes.map(t =>
         '<div class="chart-card" style="padding:16px;border-top:3px solid '+TYPE_COLORS[t]+'">'
         + '<div style="font-size:13px;font-weight:700;color:'+TYPE_COLORS[t]+';margin-bottom:8px">'+TYPE_LABELS[t]+'</div>'
-        + '<div style="display:flex;gap:16px">'
+        + '<div style="display:flex;gap:16px;margin-bottom:6px">'
         + '<div><div style="font-size:22px;font-weight:800;color:var(--gray-900)">'+typeTotals[t].convs+'</div><div style="font-size:10px;color:var(--gray-400)">conversations</div></div>'
         + '<div><div style="font-size:22px;font-weight:800;color:var(--gray-900)">'+typeTotals[t].people.size+'</div><div style="font-size:10px;color:var(--gray-400)">people</div></div>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px">'
+        + '<span style="font-size:11px;color:#6d28d9;font-weight:600">'+typeTotals[t].oneOnOne+' 1:1</span>'
+        + '<span style="font-size:11px;color:var(--gray-400)">·</span>'
+        + '<span style="font-size:11px;color:#065f46;font-weight:600">'+typeTotals[t].group+' group</span>'
         + '</div></div>'
       ).join('');
 
