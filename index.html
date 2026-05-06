@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>People Coverage</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💃</text></svg>">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --indigo: #6366f1; --indigo-dark: #4f46e5; --indigo-light: #e0e7ff;
+    --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+    --gray-400: #9ca3af; --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
+    --green: #16a34a; --green-bg: #dcfce7;
+    --yellow: #ca8a04; --yellow-bg: #fef9c3;
+    --orange: #ea580c; --orange-bg: #ffedd5;
+    --red: #dc2626; --red-bg: #fee2e2;
+    --radius: 10px; --radius-sm: 6px; --radius-pill: 999px;
+    --shadow: 0 1px 4px rgba(0,0,0,.10); --shadow-md: 0 4px 16px rgba(0,0,0,.14);
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+  /* Layout */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--gray-200);
+            padding: 0 24px; height: 56px; display: flex; align-items: center;
+            gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .topbar-title { font-weight: 800; font-size: 18px; color: var(--indigo); flex: 1; }
+  .topbar-title span { color: var(--gray-500); font-weight: 400; font-size: 14px; margin-left: 8px; }
+  .main { display: flex; flex: 1; }
+
+  /* Sidebar */
+  .sidebar { width: 240px; flex-shrink: 0; background: #fff;
+             border-right: 1px solid var(--gray-200); padding: 16px 12px;
+             display: flex; flex-direction: column; gap: 20px;
+             overflow-y: auto; max-height: calc(100vh - 56px); position: sticky; top: 56px; }
+  .sidebar-section-title { font-size: 11px; font-weight: 700; letter-spacing: .06em;
+                           color: var(--gray-400); text-transform: uppercase; margin-bottom: 6px; }
+
+  /* Content */
+  .content { flex: 1; padding: 24px; overflow-y: auto; }
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+
+  /* Cards grid */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+  /* Person card */
+  .card { border-radius: var(--radius); padding: 14px 16px; display: flex;
+          flex-direction: column; gap: 8px; box-shadow: var(--shadow);
+          transition: box-shadow .15s; cursor: default; border-left: 4px solid transparent; }
+  .card:hover { box-shadow: var(--shadow-md); }
+  .card-header { display: flex; align-items: flex-start; gap: 10px; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; color: #fff;
+            font-weight: 800; font-size: 15px; flex-shrink: 0; }
+  .card-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
+  .card-role { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+  .card-actions { display: flex; gap: 3px; margin-left: auto; flex-shrink: 0; }
+
+  /* Badges */
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+           border-radius: var(--radius-pill); font-size: 11px; font-weight: 500; }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .theme-tag { background: var(--indigo-light); color: #3730a3;
+               border-radius: var(--radius-pill); padding: 2px 8px; font-size: 11px; font-weight: 500; }
+  .conv-theme-tag { background: #dbeafe; color: #1e40af;
+                    border-radius: var(--radius-pill); padding: 1px 6px; font-size: 10px; }
+  .conv-type-tag { border-radius: var(--radius-pill); padding: 1px 6px; font-size: 10px; font-weight: 600; }
+  .conv-type-one { background: #ede9fe; color: #6d28d9; }
+  .conv-type-group { background: #d1fae5; color: #065f46; }
+  .conv-type-opt { display: flex; align-items: center; gap: 6px; cursor: pointer;
+                   border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+                   padding: 7px 14px; font-size: 13px; font-weight: 500;
+                   transition: border-color .1s, background .1s; }
+  .conv-type-opt:has(input:checked) { border-color: var(--indigo); background: var(--indigo-light); color: var(--indigo-dark); }
+  .conv-type-opt input { accent-color: var(--indigo); }
+
+  /* Coverage dot */
+  .coverage-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-700); }
+  .coverage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Conversation history */
+  .conv-toggle { background: none; border: none; cursor: pointer; display: flex;
+                 align-items: center; gap: 4px; color: var(--gray-500); font-size: 12px;
+                 padding: 0; font-family: inherit; }
+  .conv-toggle:hover { color: var(--gray-700); }
+  .conv-list { display: flex; flex-direction: column; gap: 5px; }
+  .conv-item { background: rgba(255,255,255,.75); border-radius: 6px;
+               padding: 6px 10px; font-size: 12px; }
+  .conv-item-header { display: flex; justify-content: space-between; align-items: center;
+                      margin-bottom: 2px; }
+  .conv-date { font-weight: 600; color: var(--gray-700); }
+  .conv-notes { color: var(--gray-500); }
+
+  /* Buttons */
+  button { cursor: pointer; font-family: inherit; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+         border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+         border: none; transition: opacity .1s; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--indigo); color: #fff; }
+  .btn-primary:hover { background: var(--indigo-dark); }
+  .btn-secondary { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-200); }
+  .btn-secondary:hover { background: var(--gray-200); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-sm { padding: 4px 8px; font-size: 12px; }
+  .icon-btn { background: none; border: none; padding: 4px; border-radius: 4px;
+              color: var(--gray-400); display: flex; align-items: center; transition: background .1s; }
+  .icon-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+  .icon-btn.danger:hover { background: #fee2e2; color: var(--red); }
+
+  /* Sidebar items */
+  .org-row { display: flex; align-items: center; border-radius: var(--radius-sm);
+             transition: background .1s; }
+  .org-row:hover { background: var(--gray-100); }
+  .org-row:hover .org-edit-btn { opacity: 1; }
+  .org-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+              border-radius: var(--radius-sm); cursor: pointer; font-size: 13px;
+              font-weight: 500; border: none; background: none; flex: 1; min-width: 0;
+              text-align: left; color: var(--gray-700); }
+  .org-item.active { color: var(--indigo); font-weight: 700; }
+  .org-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .org-count { margin-left: auto; background: var(--gray-200); color: var(--gray-500);
+               border-radius: var(--radius-pill); padding: 1px 6px; font-size: 10px; }
+  .org-edit-btn { opacity: 0; background: none; border: none; cursor: pointer; padding: 4px 6px;
+                  color: var(--gray-400); border-radius: 4px; flex-shrink: 0; display: flex;
+                  align-items: center; transition: opacity .15s, color .1s; }
+  .org-edit-btn:hover { color: var(--indigo); }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray-500); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45);
+                    display: flex; align-items: center; justify-content: center;
+                    z-index: 200; padding: 16px; }
+  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 480px;
+           max-height: 90vh; display: flex; flex-direction: column;
+           box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between;
+                  padding: 16px 20px; border-bottom: 1px solid var(--gray-200); }
+  .modal-title { font-size: 17px; font-weight: 700; }
+  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--gray-200);
+                  display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* Form */
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+  .field label { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+  .field input, .field select, .field textarea {
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    padding: 8px 10px; font-size: 14px; color: var(--gray-900); outline: none;
+    font-family: inherit; transition: border-color .15s; width: 100%; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--indigo); }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field-hint { font-size: 11px; color: var(--gray-400); }
+
+  /* Theme picker (in modals) */
+  .theme-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+  .theme-pill { padding: 3px 10px; border-radius: var(--radius-pill); font-size: 12px;
+                font-weight: 500; cursor: pointer; transition: all .1s;
+                border: 1px solid var(--gray-200); background: var(--gray-100); color: var(--gray-700); }
+  .theme-pill.selected { background: var(--indigo); color: #fff; border-color: var(--indigo-dark); }
+  .theme-pill.add-new { border-style: dashed; color: var(--gray-400); background: none; }
+  .theme-pill.add-new:hover { border-color: var(--indigo); color: var(--indigo); }
+
+  /* Theme filter pills in sidebar (with delete ×) */
+  .theme-filter-pill { display: inline-flex; align-items: center;
+                       border-radius: var(--radius-pill); font-size: 12px; font-weight: 500;
+                       border: 1px solid var(--gray-200); background: var(--gray-100);
+                       overflow: hidden; transition: border-color .1s; }
+  .theme-filter-pill.selected { background: var(--indigo-light); border-color: var(--indigo); }
+  .theme-filter-pill:hover { border-color: var(--gray-400); }
+  .theme-pill-label { background: none; border: none; cursor: pointer; padding: 3px 6px 3px 10px;
+                      font-size: 12px; font-weight: 500; color: var(--gray-700); font-family: inherit; }
+  .theme-filter-pill.selected .theme-pill-label { color: var(--indigo-dark); }
+  .theme-pill-del { background: none; border: none; cursor: pointer; padding: 3px 7px 3px 2px;
+                    font-size: 14px; line-height: 1; color: var(--gray-400); font-family: inherit;
+                    transition: color .1s; }
+  .theme-pill-del:hover { color: var(--red); }
+
+  /* Color picker */
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+                  border: 3px solid transparent; transition: border-color .1s; }
+  .color-swatch.selected { border-color: var(--gray-900); }
+
+  /* Coverage section headers */
+  .section-header { font-size: 12px; font-weight: 700; color: var(--gray-400);
+                    letter-spacing: .05em; text-transform: uppercase;
+                    margin-bottom: 8px; margin-top: 4px; display: flex;
+                    align-items: center; gap: 6px; }
+  .section-count { background: var(--gray-200); color: var(--gray-600);
+                   border-radius: var(--radius-pill); padding: 1px 7px; font-size: 10px;
+                   font-weight: 700; text-transform: none; letter-spacing: 0; }
+
+  /* Search */
+  .search-input { border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+                  padding: 7px 12px; font-size: 13px; outline: none; width: 200px;
+                  font-family: inherit; }
+  .search-input:focus { border-color: var(--indigo); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: var(--gray-400); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 600; color: var(--gray-500); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  /* Org form inline */
+  .org-form-inline { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+  .org-form-inline input { flex: 1; }
+
+  /* Summary stats */
+  .stats-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius);
+               padding: 12px 16px; min-width: 110px; }
+  .stat-num { font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--gray-400); margin-top: 2px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-title">People Coverage <span>keep in touch · meet new</span></div>
+    <button class="btn btn-secondary btn-sm" id="btn-pseudonym" title="Hide client names for screenshots / demos">👁 Hide clients</button>
+    <button class="btn btn-secondary btn-sm" id="btn-add-org">+ Organization</button>
+    <button class="btn btn-primary btn-sm" id="btn-add-person">+ Person</button>
+  </div>
+  <div class="main">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Filter by org</div>
+        <div id="org-filter-list"></div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Coverage</div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Filter by theme</div>
+        <div id="theme-filter-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+      </div>
+      <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--gray-200)">
+        <div class="sidebar-section-title">Data</div>
+        <button class="btn btn-secondary btn-sm" id="btn-export" style="width:100%;margin-bottom:6px">Export JSON</button>
+        <label class="btn btn-secondary btn-sm" style="width:100%;cursor:pointer;justify-content:center">
+          Import JSON<input type="file" id="import-file" accept=".json" style="display:none">
+        </label>
+      </div>
+    </aside>
+    <div class="content">
+      <div class="filter-bar">
+        <input class="search-input" id="search" placeholder="Search people…" />
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <label style="font-size:12px;color:var(--gray-500)">Group by:</label>
+          <select id="group-by" style="border:1px solid var(--gray-200);border-radius:6px;padding:6px 10px;font-size:12px;outline:none;font-family:inherit">
+            <option value="coverage">Coverage status</option>
+            <option value="org">Organization</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+      <div id="stats-row" class="stats-row"></div>
+      <div id="cards-area"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals injected by JS -->
+<div id="modal-root"></div>
+
+<script>
+// ─── Helpers ─────────────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function highlight(str, query) {
+  if (!query) return esc(str);
+  const idx = str.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return esc(str);
+  return esc(str.slice(0, idx))
+    + `<mark style="background:#fde68a;color:#92400e;border-radius:2px;padding:0 1px">${esc(str.slice(idx, idx + query.length))}</mark>`
+    + esc(str.slice(idx + query.length));
+}
+
+function matchesSearch(p) {
+  if (!ui.search) return true;
+  const q = ui.search.toLowerCase();
+  return p.name.toLowerCase().includes(q)
+    || p.role?.toLowerCase().includes(q)
+    || orgById(p.orgId)?.name.toLowerCase().includes(q);
+}
+
+// ─── Storage ────────────────────────────────────────────────────────────────
+const KEY = 'people-coverage-v2';
+const ORG_COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#84cc16'];
+const COVERAGE = {
+  recent:  { bg:'#dcfce7', border:'#16a34a', dot:'#16a34a', label:'Recent (≤30d)' },
+  warm:    { bg:'#fef9c3', border:'#ca8a04', dot:'#ca8a04', label:'Warm (31–90d)' },
+  cooling: { bg:'#ffedd5', border:'#ea580c', dot:'#ea580c', label:'Cooling (91–180d)' },
+  cold:    { bg:'#fee2e2', border:'#dc2626', dot:'#dc2626', label:'Cold (180d+)' },
+  never:   { bg:'#f3f4f6', border:'#9ca3af', dot:'#9ca3af', label:'Never contacted' },
+};
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || defaultData(); } catch { return defaultData(); }
+}
+function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+function defaultData() {
+  return {
+    organizations: [{ id: uid(), name: 'My Consulting Org', type: 'consulting', color: '#6366f1' }],
+    people: [],
+    conversations: [],
+    themes: ['Strategy','Technical','Delivery','People','Sales','Feedback','Planning','Review'],
+  };
+}
+function uid() { return crypto.randomUUID(); }
+
+let state = load();
+
+// ─── Derived helpers ──────────────────────────────────────────────────────
+function lastContact(personId) {
+  const convs = state.conversations.filter(c => c.personId === personId);
+  if (!convs.length) return null;
+  return convs.sort((a,b) => new Date(b.date) - new Date(a.date))[0].date;
+}
+function coverageStatus(personId) {
+  const last = lastContact(personId);
+  if (!last) return 'never';
+  const days = Math.floor((Date.now() - new Date(last)) / 86400000);
+  if (days <= 30)  return 'recent';
+  if (days <= 90)  return 'warm';
+  if (days <= 180) return 'cooling';
+  return 'cold';
+}
+function personConvs(personId) {
+  return state.conversations.filter(c => c.personId === personId)
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
+}
+function consultingOrg() {
+  return state.organizations.find(o => o.type === 'consulting');
+}
+function orgById(id) { return state.organizations.find(o => o.id === id); }
+function fmtDate(ds) {
+  if (!ds) return '';
+  return new Date(ds).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+
+const PSEUDO_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+function orgDisplayName(org) {
+  if (!org) return '—';
+  if (!ui.pseudonymize || org.type !== 'client') return org.name;
+  const clientOrgs = state.organizations.filter(o => o.type === 'client');
+  const idx = clientOrgs.findIndex(o => o.id === org.id);
+  return `Client ${PSEUDO_LABELS[idx] ?? idx + 1}`;
+}
+
+// ─── UI state ────────────────────────────────────────────────────────────
+let ui = { orgFilter: null, themeFilter: [], search: '', groupBy: 'coverage', pseudonymize: false };
+
+function commit() { save(state); render(); }
+
+// ─── Render ──────────────────────────────────────────────────────────────
+function render() {
+  renderSidebar();
+  renderStats();
+  renderCards();
+}
+
+function renderSidebar() {
+  // Org filter
+  const orgList = document.getElementById('org-filter-list');
+  const counts = {};
+  state.people.forEach(p => { counts[p.orgId] = (counts[p.orgId]||0)+1; });
+  const pencilSVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+  orgList.innerHTML = `
+    <button class="org-item ${!ui.orgFilter ? 'active' : ''}" data-org="all">
+      <span class="org-color-dot" style="background:var(--gray-400)"></span>
+      All people
+      <span class="org-count">${state.people.length}</span>
+    </button>
+    ${state.organizations.map(o => `
+      <div class="org-row">
+        <button class="org-item ${ui.orgFilter===o.id ? 'active' : ''}" data-org="${o.id}">
+          <span class="org-color-dot" style="background:${o.color}"></span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(orgDisplayName(o))}</span>
+          <span class="org-count">${counts[o.id]||0}</span>
+        </button>
+        <button class="org-edit-btn" data-edit-org="${o.id}" title="Edit organization">${pencilSVG}</button>
+      </div>
+    `).join('')}
+  `;
+  orgList.querySelectorAll('[data-org]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ui.orgFilter = btn.dataset.org === 'all' ? null : btn.dataset.org;
+      render();
+    });
+  });
+  orgList.querySelectorAll('[data-edit-org]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const org = state.organizations.find(o => o.id === btn.dataset.editOrg);
+      if (org) showOrgModal(org);
+    });
+  });
+
+  // Legend
+  document.getElementById('legend').innerHTML = Object.entries(COVERAGE).map(([k,v])=>`
+    <div class="legend-item">
+      <span class="legend-dot" style="background:${v.dot}"></span> ${v.label}
+    </div>
+  `).join('');
+
+  // Theme filter
+  const themeList = document.getElementById('theme-filter-list');
+  themeList.innerHTML = state.themes.map(t => `
+    <span class="theme-filter-pill ${ui.themeFilter.includes(t)?'selected':''}">
+      <button class="theme-pill-label" data-theme="${esc(t)}">${esc(t)}</button>
+      <button class="theme-pill-del" data-delete-theme="${esc(t)}" title="Delete theme">×</button>
+    </span>
+  `).join('');
+  themeList.querySelectorAll('[data-theme]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.theme;
+      ui.themeFilter = ui.themeFilter.includes(t)
+        ? ui.themeFilter.filter(x=>x!==t)
+        : [...ui.themeFilter, t];
+      render();
+    });
+  });
+  themeList.querySelectorAll('[data-delete-theme]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = btn.dataset.deleteTheme;
+      const inUse = state.people.filter(p => p.themes?.includes(t)).length;
+      const msg = inUse
+        ? `Delete theme "${t}"? It is tagged on ${inUse} person${inUse!==1?'s':''}. It will be removed from them too.`
+        : `Delete theme "${t}"?`;
+      if (!confirm(msg)) return;
+      state.themes = state.themes.filter(x => x !== t);
+      state.people.forEach(p => { if (p.themes) p.themes = p.themes.filter(x => x !== t); });
+      state.conversations.forEach(c => { if (c.themes) c.themes = c.themes.filter(x => x !== t); });
+      ui.themeFilter = ui.themeFilter.filter(x => x !== t);
+      commit();
+    });
+  });
+}
+
+function renderStats() {
+  const counts = {recent:0, warm:0, cooling:0, cold:0, never:0};
+  state.people.forEach(p => counts[coverageStatus(p.id)]++);
+  const row = document.getElementById('stats-row');
+  row.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--indigo)">${state.people.length}</div>
+      <div class="stat-label">Total people</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:${COVERAGE.recent.dot}">${counts.recent}</div>
+      <div class="stat-label">Recent</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:${COVERAGE.warm.dot}">${counts.warm}</div>
+      <div class="stat-label">Warm</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:${COVERAGE.cooling.dot}">${counts.cooling}</div>
+      <div class="stat-label">Cooling</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:${COVERAGE.cold.dot}">${counts.cold + counts.never}</div>
+      <div class="stat-label">Need attention</div>
+    </div>
+  `;
+}
+
+function filteredPeople() {
+  let people = [...state.people];
+  if (ui.orgFilter) people = people.filter(p => p.orgId === ui.orgFilter);
+  if (ui.themeFilter.length) people = people.filter(p =>
+    ui.themeFilter.every(t => p.themes?.includes(t))
+  );
+  people.sort((a, b) => a.name.localeCompare(b.name));
+  return people;
+}
+
+function renderCards() {
+  const area = document.getElementById('cards-area');
+  const people = filteredPeople();
+
+  if (!people.length) {
+    area.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">👥</div>
+        <div class="empty-title">${state.people.length ? 'No matches' : 'No people yet'}</div>
+        <div class="empty-sub">${state.people.length ? 'Try adjusting your filters.' : 'Add an organization and start adding people.'}</div>
+      </div>`;
+    return;
+  }
+
+  if (ui.groupBy === 'coverage') {
+    const order = ['never','cold','cooling','warm','recent'];
+    const groups = {};
+    order.forEach(k => groups[k] = []);
+    people.forEach(p => groups[coverageStatus(p.id)].push(p));
+    area.innerHTML = order.map(k => {
+      if (!groups[k].length) return '';
+      return `
+        <div class="section-header">
+          <span class="legend-dot" style="background:${COVERAGE[k].dot}"></span>
+          ${COVERAGE[k].label}
+          <span class="section-count">${groups[k].length}</span>
+        </div>
+        <div class="cards-grid" style="margin-bottom:24px">
+          ${groups[k].map(p => cardHTML(p)).join('')}
+        </div>`;
+    }).join('');
+  } else if (ui.groupBy === 'org') {
+    const orgs = state.organizations.filter(o => people.some(p => p.orgId === o.id));
+    area.innerHTML = orgs.map(o => {
+      const group = people.filter(p => p.orgId === o.id);
+      return `
+        <div class="section-header">
+          <span class="legend-dot" style="background:${o.color}"></span>
+          ${esc(orgDisplayName(o))} <span class="section-count">${group.length}</span>
+        </div>
+        <div class="cards-grid" style="margin-bottom:24px">
+          ${group.map(p => cardHTML(p)).join('')}
+        </div>`;
+    }).join('');
+  } else {
+    area.innerHTML = `<div class="cards-grid">${people.map(p => cardHTML(p)).join('')}</div>`;
+  }
+
+  // Attach events
+  area.querySelectorAll('[data-action]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const { action, id } = el.dataset;
+      if (action === 'edit') showPersonModal(state.people.find(p=>p.id===id));
+      if (action === 'delete') deletePerson(id);
+      if (action === 'log') showConvModal(state.people.find(p=>p.id===id));
+      if (action === 'toggle-conv') toggleConvHistory(id);
+      if (action === 'edit-conv') {
+        const conv = state.conversations.find(c=>c.id===el.dataset.convId);
+        const person = state.people.find(p=>p.id===el.dataset.personId);
+        if (conv && person) showConvModal(person, conv);
+      }
+      if (action === 'delete-conv') deleteConv(el.dataset.convId);
+    });
+  });
+}
+
+function cardHTML(p) {
+  const org = orgById(p.orgId);
+  const consulting = consultingOrg();
+  const clientOrg = p.clientOrgId ? orgById(p.clientOrgId) : null;
+  const status = coverageStatus(p.id);
+  const cv = COVERAGE[status];
+  const last = lastContact(p.id);
+  const days = last ? Math.floor((Date.now()-new Date(last))/86400000) : null;
+  const convs = personConvs(p.id);
+  const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const isConsultant = consulting && p.orgId === consulting.id;
+
+  const convHistoryId = `ch-${p.id}`;
+  const matched = matchesSearch(p);
+  const searchActive = !!ui.search;
+  const cardStyle = [
+    `background:${cv.bg}`,
+    `border-left-color:${cv.border}`,
+    searchActive && matched  ? `outline:2px solid #f59e0b;outline-offset:1px` : '',
+    searchActive && !matched ? `opacity:0.35` : '',
+  ].filter(Boolean).join(';');
+
+  return `
+  <div class="card" style="${cardStyle}">
+    <div class="card-header">
+      <div class="avatar" style="background:${org?.color||'#9ca3af'}">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div class="card-name">${highlight(p.name, ui.search)}</div>
+        ${p.role ? `<div class="card-role">${esc(p.role)}</div>` : ''}
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn" title="Log conversation" data-action="log" data-id="${p.id}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+        <button class="icon-btn" title="Edit" data-action="edit" data-id="${p.id}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        </button>
+        <button class="icon-btn danger" title="Delete" data-action="delete" data-id="${p.id}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="badges">
+      <span class="badge" style="background:${(org?.color||'#9ca3af')}22;color:${org?.color||'#9ca3af'};border:1px solid ${(org?.color||'#9ca3af')}44">
+        <span class="badge-dot" style="background:${org?.color||'#9ca3af'}"></span>${esc(orgDisplayName(org))}
+      </span>
+      ${isConsultant && clientOrg ? `
+        <span class="badge" style="background:${clientOrg.color}18;color:${clientOrg.color};border:1px solid ${clientOrg.color}44">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          ${esc(orgDisplayName(clientOrg))}
+        </span>
+      ` : ''}
+    </div>
+
+    <div class="coverage-row">
+      <span class="coverage-dot" style="background:${cv.dot}"></span>
+      <span>${last ? `${days}d ago · ${fmtDate(last)}` : 'Never contacted'}</span>
+    </div>
+
+    ${p.themes?.length ? `
+      <div class="badges">
+        ${[...p.themes].sort((a,b)=>a.localeCompare(b)).map(t=>`<span class="theme-tag">${esc(t)}</span>`).join('')}
+      </div>
+    ` : ''}
+
+    ${convs.length ? `
+      <button class="conv-toggle" data-action="toggle-conv" data-id="${p.id}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        ${convs.length} conversation${convs.length!==1?'s':''}
+        <svg class="chevron-${p.id}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div id="${convHistoryId}" style="display:none" class="conv-list">
+        ${convs.slice(0,5).map(c=>`
+          <div class="conv-item">
+            <div class="conv-item-header">
+              <span class="conv-date">${fmtDate(c.date)}</span>
+              <div style="display:flex;gap:3px;align-items:center;margin-left:auto">
+                ${c.type ? `<span class="conv-type-tag conv-type-${c.type==='group'?'group':'one'}">${c.type}</span>` : ''}
+                ${(c.themes||[]).map(t=>`<span class="conv-theme-tag">${esc(t)}</span>`).join('')}
+                <button class="icon-btn" style="padding:2px" title="Edit conversation" data-action="edit-conv" data-conv-id="${c.id}" data-person-id="${p.id}">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button class="icon-btn danger" style="padding:2px" title="Delete conversation" data-action="delete-conv" data-conv-id="${c.id}">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+                </button>
+              </div>
+            </div>
+            ${c.notes ? `<div class="conv-notes">${esc(c.notes)}</div>` : ''}
+          </div>
+        `).join('')}
+        ${convs.length>5 ? `<div style="font-size:11px;color:var(--gray-400);text-align:center">+${convs.length-5} more</div>` : ''}
+      </div>
+    ` : ''}
+  </div>`;
+}
+
+function toggleConvHistory(personId) {
+  const el = document.getElementById(`ch-${personId}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+  if (el) el.style.flexDirection = 'column';
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────
+function modal(html) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = html;
+  root.querySelector('.modal-backdrop')?.addEventListener('click', e => {
+    if (e.target.classList.contains('modal-backdrop')) closeModal();
+  });
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+// ── Org Modal ──
+function showOrgModal(org) {
+  const isNew = !org;
+  const current = org || { id: uid(), name: '', type: 'client', color: ORG_COLORS[0] };
+  let selectedColor = current.color;
+
+  modal(`
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">${isNew ? 'Add Organization' : 'Edit Organization'}</span>
+          <button class="icon-btn" id="m-close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Organization name</label>
+            <input id="m-org-name" value="${esc(current.name)}" placeholder="e.g. Acme Corp" />
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select id="m-org-type">
+              <option value="consulting" ${current.type==='consulting'?'selected':''}>Consulting (my org)</option>
+              <option value="client" ${current.type==='client'?'selected':''}>Client organization</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Color</label>
+            <div class="color-swatches" id="m-colors">
+              ${ORG_COLORS.map(c=>`
+                <div class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" data-color="${c}"></div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          ${!isNew ? `<button class="btn btn-danger" id="m-org-del">Delete org</button>` : ''}
+          <button class="btn btn-secondary" id="m-cancel">Cancel</button>
+          <button class="btn btn-primary" id="m-save">Save</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('m-close').onclick = closeModal;
+  document.getElementById('m-cancel').onclick = closeModal;
+  document.getElementById('m-colors').querySelectorAll('[data-color]').forEach(sw => {
+    sw.onclick = () => {
+      selectedColor = sw.dataset.color;
+      document.querySelectorAll('#m-colors [data-color]').forEach(s=>s.classList.remove('selected'));
+      sw.classList.add('selected');
+    };
+  });
+  if (!isNew) document.getElementById('m-org-del').onclick = () => {
+    if (confirm(`Delete "${current.name}" and all its people?`)) {
+      state.organizations = state.organizations.filter(o=>o.id!==current.id);
+      state.people = state.people.filter(p=>p.orgId!==current.id);
+      state.conversations = state.conversations.filter(c=>!state.people.find(p=>p.id===c.personId&&p.orgId===current.id));
+      commit(); closeModal();
+    }
+  };
+  document.getElementById('m-save').onclick = () => {
+    const name = document.getElementById('m-org-name').value.trim();
+    if (!name) { alert('Name required'); return; }
+    const type = document.getElementById('m-org-type').value;
+    if (isNew) {
+      state.organizations.push({ id: current.id, name, type, color: selectedColor });
+    } else {
+      Object.assign(current, { name, type, color: selectedColor });
+      const i = state.organizations.findIndex(o=>o.id===current.id);
+      if (i>=0) state.organizations[i] = current;
+    }
+    commit(); closeModal();
+  };
+}
+
+// ── Person Modal ──
+function showPersonModal(person) {
+  const isNew = !person;
+  const current = person ? {...person} : { id: uid(), name: '', role: '', orgId: '', clientOrgId: null, themes: [] };
+  let selectedThemes = [...(current.themes||[])];
+  const consulting = consultingOrg();
+
+  modal(`
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">${isNew ? 'Add Person' : 'Edit Person'}</span>
+          <button class="icon-btn" id="m-close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Full name *</label>
+            <input id="m-name" value="${esc(current.name)}" placeholder="Jane Smith" />
+          </div>
+          <div class="field">
+            <label>Role / title</label>
+            <input id="m-role" value="${esc(current.role||'')}" placeholder="e.g. CTO, Project Lead" />
+          </div>
+          <div class="field">
+            <label>Organization *</label>
+            <select id="m-org">
+              <option value="">— select —</option>
+              ${state.organizations.map(o=>`<option value="${o.id}" ${current.orgId===o.id?'selected':''}>${esc(o.name)} (${o.type==='consulting'?'consulting':'client'})</option>`).join('')}
+            </select>
+          </div>
+          ${consulting ? `
+          <div class="field" id="client-org-field" style="${current.orgId===consulting.id?'':'display:none'}">
+            <label>Assigned to client <span style="font-weight:400;color:var(--gray-400)">(for consultants)</span></label>
+            <select id="m-client-org">
+              <option value="">— none / internal —</option>
+              ${state.organizations.filter(o=>o.type==='client').map(o=>`<option value="${o.id}" ${current.clientOrgId===o.id?'selected':''}>${esc(o.name)}</option>`).join('')}
+            </select>
+          </div>
+          ` : ''}
+          <div class="field">
+            <label>Conversation themes</label>
+            <div class="theme-picker" id="m-themes">
+              ${state.themes.map(t=>`
+                <button type="button" class="theme-pill ${selectedThemes.includes(t)?'selected':''}" data-theme="${esc(t)}">${esc(t)}</button>
+              `).join('')}
+              <button type="button" class="theme-pill add-new" id="m-add-theme">+ New theme</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="m-cancel">Cancel</button>
+          <button class="btn btn-primary" id="m-save">Save person</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('m-close').onclick = closeModal;
+  document.getElementById('m-cancel').onclick = closeModal;
+
+  const orgSel = document.getElementById('m-org');
+  const clientField = document.getElementById('client-org-field');
+  if (orgSel && clientField) {
+    orgSel.addEventListener('change', () => {
+      clientField.style.display = orgSel.value === consulting?.id ? '' : 'none';
+    });
+  }
+
+  document.getElementById('m-themes').addEventListener('click', e => {
+    if (e.target.dataset.theme) {
+      const t = e.target.dataset.theme;
+      if (selectedThemes.includes(t)) selectedThemes = selectedThemes.filter(x=>x!==t);
+      else selectedThemes.push(t);
+      e.target.classList.toggle('selected', selectedThemes.includes(t));
+    }
+  });
+  document.getElementById('m-add-theme')?.addEventListener('click', () => {
+    const name = prompt('New theme name:');
+    if (name?.trim()) {
+      const t = name.trim();
+      if (!state.themes.includes(t)) state.themes.push(t);
+      if (!selectedThemes.includes(t)) selectedThemes.push(t);
+      // Re-render theme picker
+      const picker = document.getElementById('m-themes');
+      const addBtn = picker.querySelector('#m-add-theme');
+      const newPill = document.createElement('button');
+      newPill.type = 'button';
+      newPill.className = 'theme-pill selected';
+      newPill.dataset.theme = t;
+      newPill.textContent = t;
+      picker.insertBefore(newPill, addBtn);
+    }
+  });
+
+  document.getElementById('m-save').onclick = () => {
+    const name = document.getElementById('m-name').value.trim();
+    const orgId = document.getElementById('m-org').value;
+    if (!name) { alert('Name required'); return; }
+    if (!orgId) { alert('Organization required'); return; }
+    const clientOrgId = document.getElementById('m-client-org')?.value || null;
+    const role = document.getElementById('m-role').value.trim();
+    if (isNew) {
+      state.people.push({ id: current.id, name, role, orgId, clientOrgId: clientOrgId||null, themes: selectedThemes });
+    } else {
+      const i = state.people.findIndex(p=>p.id===current.id);
+      if (i>=0) state.people[i] = { ...state.people[i], name, role, orgId, clientOrgId: clientOrgId||null, themes: selectedThemes };
+    }
+    commit(); closeModal();
+  };
+}
+
+// ── Conversation Modal (add or edit) ──
+function showConvModal(person, existing) {
+  if (!person) return;
+  const isEdit = !!existing;
+  let selectedThemes = existing ? [...(existing.themes||[])] : [];
+  const today = new Date().toISOString().slice(0,10);
+  const dateVal = existing ? existing.date : today;
+  const typeVal = existing?.type || '1:1';
+  const notesVal = existing?.notes || '';
+
+  modal(`
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">${isEdit ? 'Edit conversation' : 'Log conversation'} · ${esc(person.name)}</span>
+          <button class="icon-btn" id="m-close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="m-date" value="${dateVal}" />
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <div style="display:flex;gap:8px">
+              <label class="conv-type-opt">
+                <input type="radio" name="conv-type" value="1:1" ${typeVal==='1:1'?'checked':''} />
+                <span>1:1</span>
+              </label>
+              <label class="conv-type-opt">
+                <input type="radio" name="conv-type" value="group" ${typeVal==='group'?'checked':''} />
+                <span>Group</span>
+              </label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Themes discussed</label>
+            <div class="theme-picker" id="m-conv-themes">
+              ${state.themes.map(t=>`
+                <button type="button" class="theme-pill ${selectedThemes.includes(t)?'selected':''}" data-theme="${esc(t)}">${esc(t)}</button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="field">
+            <label>Notes <span style="font-weight:400;color:var(--gray-400)">(optional)</span></label>
+            <textarea id="m-notes" placeholder="Quick summary, key points…">${esc(notesVal)}</textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="m-cancel">Cancel</button>
+          <button class="btn btn-primary" id="m-save">${isEdit ? 'Save changes' : 'Log conversation'}</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('m-close').onclick = closeModal;
+  document.getElementById('m-cancel').onclick = closeModal;
+  document.getElementById('m-conv-themes').addEventListener('click', e => {
+    if (e.target.dataset.theme) {
+      const t = e.target.dataset.theme;
+      if (selectedThemes.includes(t)) selectedThemes = selectedThemes.filter(x=>x!==t);
+      else selectedThemes.push(t);
+      e.target.classList.toggle('selected', selectedThemes.includes(t));
+    }
+  });
+  document.getElementById('m-save').onclick = () => {
+    const date = document.getElementById('m-date').value;
+    const notes = document.getElementById('m-notes').value.trim();
+    const type = document.querySelector('input[name="conv-type"]:checked')?.value || '1:1';
+    if (!date) { alert('Date required'); return; }
+    if (isEdit) {
+      const i = state.conversations.findIndex(c=>c.id===existing.id);
+      if (i>=0) state.conversations[i] = { ...existing, date, type, themes: selectedThemes, notes };
+    } else {
+      state.conversations.push({ id: uid(), personId: person.id, date, type, themes: selectedThemes, notes });
+    }
+    commit(); closeModal();
+  };
+}
+
+// ── Delete conversation ──
+function deleteConv(id) {
+  if (!confirm('Delete this conversation?')) return;
+  state.conversations = state.conversations.filter(c=>c.id!==id);
+  commit();
+}
+
+// ── Delete person ──
+function deletePerson(id) {
+  const p = state.people.find(x=>x.id===id);
+  if (!p) return;
+  if (!confirm(`Delete ${p.name}?`)) return;
+  state.people = state.people.filter(x=>x.id!==id);
+  state.conversations = state.conversations.filter(c=>c.personId!==id);
+  commit();
+}
+
+// ─── Top bar actions ──────────────────────────────────────────────────────
+document.getElementById('btn-pseudonym').onclick = () => {
+  ui.pseudonymize = !ui.pseudonymize;
+  const btn = document.getElementById('btn-pseudonym');
+  btn.textContent = ui.pseudonymize ? '👁 Show clients' : '👁 Hide clients';
+  btn.style.background = ui.pseudonymize ? '#fef9c3' : '';
+  btn.style.borderColor = ui.pseudonymize ? '#ca8a04' : '';
+  btn.style.color = ui.pseudonymize ? '#92400e' : '';
+  render();
+};
+document.getElementById('btn-add-org').onclick = () => showOrgModal(null);
+document.getElementById('btn-add-person').onclick = () => showPersonModal(null);
+
+document.getElementById('search').addEventListener('input', e => {
+  ui.search = e.target.value;
+  renderCards();
+});
+document.getElementById('group-by').addEventListener('change', e => {
+  ui.groupBy = e.target.value;
+  renderCards();
+});
+
+// ─── Export / Import ──────────────────────────────────────────────────────
+document.getElementById('btn-export').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `people-coverage-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+};
+document.getElementById('import-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (imported.people && imported.organizations) {
+        if (confirm('Replace all current data with imported data?')) {
+          state = imported;
+          commit();
+        }
+      } else { alert('Invalid file format'); }
+    } catch { alert('Could not parse file'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ─── Keyboard ─────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ─── Initial render ───────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
