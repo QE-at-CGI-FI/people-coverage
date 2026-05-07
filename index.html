@@ -534,6 +534,20 @@ function filteredPeople() {
   return people;
 }
 
+function starredSection(people) {
+  const starred = people.filter(p => p.starred);
+  if (!starred.length) return '';
+  return `
+    <div class="section-header" style="color:#d97706">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+      Planned connections
+      <span class="section-count">${starred.length}</span>
+    </div>
+    <div class="cards-grid" style="margin-bottom:24px">
+      ${starred.map(p => cardHTML(p)).join('')}
+    </div>`;
+}
+
 function renderCards() {
   const area = document.getElementById('cards-area');
   const people = filteredPeople();
@@ -548,12 +562,14 @@ function renderCards() {
     return;
   }
 
+  const unstarred = people.filter(p => !p.starred);
+
   if (ui.groupBy === 'coverage') {
     const order = ['never','cold','cooling','warm','recent'];
     const groups = {};
     order.forEach(k => groups[k] = []);
-    people.forEach(p => groups[coverageStatus(p.id)].push(p));
-    area.innerHTML = order.map(k => {
+    unstarred.forEach(p => groups[coverageStatus(p.id)].push(p));
+    area.innerHTML = starredSection(people) + order.map(k => {
       if (!groups[k].length) return '';
       return `
         <div class="section-header">
@@ -566,9 +582,9 @@ function renderCards() {
         </div>`;
     }).join('');
   } else if (ui.groupBy === 'org') {
-    const orgs = state.organizations.filter(o => people.some(p => p.orgId === o.id));
-    area.innerHTML = orgs.map(o => {
-      const group = people.filter(p => p.orgId === o.id);
+    const orgs = state.organizations.filter(o => unstarred.some(p => p.orgId === o.id));
+    area.innerHTML = starredSection(people) + orgs.map(o => {
+      const group = unstarred.filter(p => p.orgId === o.id);
       return `
         <div class="section-header">
           <span class="legend-dot" style="background:${o.color}"></span>
@@ -579,7 +595,7 @@ function renderCards() {
         </div>`;
     }).join('');
   } else {
-    area.innerHTML = `<div class="cards-grid">${people.map(p => cardHTML(p)).join('')}</div>`;
+    area.innerHTML = starredSection(people) + `<div class="cards-grid">${unstarred.map(p => cardHTML(p)).join('')}</div>`;
   }
 
   // Attach events
@@ -587,6 +603,10 @@ function renderCards() {
     el.addEventListener('click', e => {
       e.stopPropagation();
       const { action, id } = el.dataset;
+      if (action === 'star') {
+        const p = state.people.find(p=>p.id===id);
+        if (p) { p.starred = !p.starred; commit(); }
+      }
       if (action === 'edit') showPersonModal(state.people.find(p=>p.id===id));
       if (action === 'delete') deletePerson(id);
       if (action === 'log') showConvModal(state.people.find(p=>p.id===id));
@@ -632,6 +652,9 @@ function cardHTML(p) {
         ${p.role ? `<div class="card-role">${esc(p.role)}</div>` : ''}
       </div>
       <div class="card-actions">
+        <button class="icon-btn" title="${p.starred ? 'Unstar' : 'Star — planned connection'}" data-action="star" data-id="${p.id}" style="color:${p.starred ? '#f59e0b' : ''}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="${p.starred ? '#f59e0b' : 'none'}" stroke="${p.starred ? '#f59e0b' : 'currentColor'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </button>
         <button class="icon-btn" title="Log conversation" data-action="log" data-id="${p.id}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         </button>
